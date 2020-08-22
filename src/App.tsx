@@ -1,4 +1,4 @@
-import React, { CSSProperties, useEffect, useReducer, useState } from 'react'
+import React, { CSSProperties, useEffect, useState } from 'react'
 import './App.css'
 import Block from './components/Block'
 import Util from './Util'
@@ -9,10 +9,10 @@ interface Point {
 }
 
 interface History {
-  id: string,
+  id: Action,
   name: string,
   handler: PointCallback,
-  reverse: string
+  reverse: Action
 }
 
 type Action = 'Up' | 'Down' | 'Left' | 'Right' | 'RotateLeft' | 'RotateRight' | 'Undo' | 'Reset'
@@ -58,29 +58,7 @@ function App() {
   const [answer, setAnswer] = useState(generateAnswer(seed))
   const [historyStep, setHistoryStep] = useState<History[]>([])
   const [done, setDone] = useState(false)
-  const [situation, dispatchSituation] = useReducer((state: number[], action: Action) => {
-    switch (action) {
-      case 'Up':
-      case 'Down':
-      case 'Left':
-      case 'Right':
-      case 'RotateLeft':
-      case 'RotateRight':
-        setHistoryStep(h => h.concat({
-          id: action,
-          ...operation[action]
-        }))
-        return traverse(size, state, operation[action].handler)
-      case 'Reset':
-        setHistoryStep([])
-        return seed
-      case 'Undo':
-        let last = historyStep[historyStep.length - 1]
-        let r = traverse(size, state, operation[last.id].handler)
-        setHistoryStep(h => h.slice(0, h.length - 1))
-        return r
-    }
-  }, seed)
+  const [situation, setSituation] = useState(seed)
   const [colorBlindness, setColorBlindness] = useState(false)
   useEffect(() => {
     document.onkeydown = ev => {
@@ -90,12 +68,11 @@ function App() {
       }, ev.code)
         .forEach(o => {
           let action = {
-            Reset: { handle: () => dispatchSituation('Reset'), done: true },
-            Undo: { handle: () => dispatchSituation('Undo') }
+            Reset: { handle: () => move('Reset') },
+            Undo: { handle: () => move('Undo') }
           }[o.id]
-          if (!!action.done === done) action.handle()
+          action.handle()
         })
-      if (done) return
       operationArray({
         Up: ['KeyW', 'ArrowUp'],
         Down: ['KeyS', 'ArrowDown'],
@@ -103,7 +80,7 @@ function App() {
         Right: ['KeyD', 'ArrowRight'],
         RotateLeft: ['KeyQ'],
         RotateRight: ['KeyE']
-      }, ev.code).forEach(o => dispatchSituation(o.id))
+      }, ev.code).forEach(o => move(o.id))
     }
 
     function operationArray<T extends Record<string, string[]>>(opt: T, code: string) {
@@ -115,11 +92,14 @@ function App() {
   const ShortcutButton = (props: {
     keyName: string,
     name: string,
-    action: Action
-  }) => <button onClick={() => dispatchSituation(props.action)}>{props.keyName}<br/>{props.name}</button>
+    action: Action,
+    disabled?: boolean
+  }) => (
+    <button onClick={() => move(props.action)} disabled={props.disabled ?? done}>{props.keyName}<br/>{props.name}</button>
+  )
   const BlockTable = (props: {
+    data: any[]
     style?: CSSProperties,
-    colorBlindness: boolean,
     size: number
   }) => (
     <table style={props.style}>
@@ -127,7 +107,7 @@ function App() {
       {Array.from({ length: size }).map((_, i) => (
         <tr key={i}>
           {Array.from({ length: size }).map((_, j) => (
-            <td key={j}><Block type={situation[i * size + j]} size={props.size} colorBlindness={props.colorBlindness}/></td>
+            <td key={j}><Block type={props.data[i * size + j]} size={props.size} colorBlindness={colorBlindness}/></td>
           ))}
         </tr>
       ))}
@@ -135,15 +115,13 @@ function App() {
     </table>
   )
   return (
-    <div>
+    <>
       <div id="toolbar">
-        <label>
-          难度：
-          <button onClick={() => setDifficulty(d => d - 1)} disabled={difficulty < 1}>-</button>
-          {difficulty}
-          <button onClick={() => setDifficulty(d => d + 1)} disabled={difficulty > 7}>+</button>
-        </label>
-        <label>
+        难度：
+        <button onClick={() => changeDifficulty(-1)} disabled={difficulty < 1}>-</button>
+        <span style={{ margin: '0 5px' }}>{difficulty}</span>
+        <button onClick={() => changeDifficulty(1)} disabled={difficulty > 7}>+</button>
+        <label style={{ marginLeft: '20px' }}>
           色盲模式：
           <input checked={colorBlindness} onChange={event => setColorBlindness(event.target.checked)} type="checkbox"/>
         </label>
@@ -157,7 +135,7 @@ function App() {
               <td><ShortcutButton keyName={'Q'} name={'左旋转'} action={'RotateLeft'}/></td>
               <td><ShortcutButton keyName={'W'} name={'上移'} action={'Up'}/></td>
               <td><ShortcutButton keyName={'E'} name={'右旋转'} action={'RotateRight'}/></td>
-              <td><ShortcutButton keyName={'R'} name={'重置'} action={'Reset'}/></td>
+              <td><ShortcutButton keyName={'R'} name={'重置'} action={'Reset'} disabled={!historyStep.length}/></td>
             </tr>
             <tr>
               <td><ShortcutButton keyName={'A'} name={'左移'} action={'Left'}/></td>
@@ -165,15 +143,39 @@ function App() {
               <td><ShortcutButton keyName={'D'} name={'右移'} action={'Right'}/></td>
             </tr>
             <tr>
-              <td><ShortcutButton keyName={'Z'} name={'撤销'} action={'Undo'}/></td>
+              <td><ShortcutButton keyName={'Z'} name={'撤销'} action={'Undo'} disabled={!historyStep.length || done}/></td>
             </tr>
             </tbody>
           </table>
           <p>目标位置：</p>
-          <BlockTable style={{ borderStyle: 'double' }} colorBlindness={colorBlindness} size={60}/>
+          <BlockTable data={answer} style={{ borderStyle: 'double' }} size={60}/>
+        </div>
+        <div className="column" style={{ width: '50%' }}>
+          <BlockTable data={situation} style={{ margin: '0 auto' }} size={150}/>
+        </div>
+        <div className="column" style={{ width: '25%' }}>
+          <div>历史步骤（{historyStep.length}）：</div>
+          <ol style={{ maxHeight: '450px', overflowY: 'auto' }}>
+            {historyStep.map((h, i) => (<li key={i}>{h.name}</li>))}
+          </ol>
         </div>
       </div>
-    </div>
+      {done ? (
+        <div style={{ color: 'white', backgroundColor: 'limegreen', padding: '20px', textAlign: 'center' }}>
+          <span style={{ fontSize: 'xx-large' }}>过关！</span>
+          <div className="row">
+            <div className="column" style={{ width: '50%' }}>
+              <a onClick={() => newGame(difficulty)} href="#">再来一个</a>
+            </div>
+            <div className="column" style={{ width: '50%' }}>
+              {difficulty < 8 ? (
+                <a onClick={() => changeDifficulty(1)} href="#">下一关</a>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </>
   )
 
   /**
@@ -234,15 +236,59 @@ function App() {
     return answer
   }
 
+  function changeDifficulty(delta: number) {
+    const newVal = difficulty + delta
+    setDifficulty(newVal)
+    newGame(newVal)
+  }
+
+  function newGame(difficulty: number) {
+    const newSeed = generateSeed(difficulty)
+    setSeed(newSeed)
+    setAnswer(generateAnswer(newSeed))
+    setSituation(newSeed)
+    setHistoryStep([])
+    setDone(false)
+  }
+
+  function move(action: Action) {
+    switch (action) {
+      case 'Up':
+      case 'Down':
+      case 'Left':
+      case 'Right':
+      case 'RotateLeft':
+      case 'RotateRight':
+        if (done) return
+        let s = traverse(size, situation, operation[action].handler)
+        setSituation(s)
+        setHistoryStep(h => h.concat({
+          id: action,
+          ...operation[action]
+        }))
+        if (match(s, answer)) setDone(true)
+        break
+      case 'Undo':
+        if (done || !historyStep.length) return
+        setSituation(s => traverse(size, s, operation[historyStep[historyStep.length - 1].reverse].handler))
+        setHistoryStep(h => h.slice(0, h.length - 1))
+        break
+      case 'Reset':
+        setSituation(seed)
+        setHistoryStep([])
+        setDone(false)
+    }
+  }
+
   function traverse<T>(size: number, array: T[], callback: (x: number, y: number, value: T) => Point): T[] {
-    let r = Array.from({ length: size * size })
+    let r = Array.from<T>({ length: size * size })
     for (let i = 0; i < size; i++) {
       for (let j = 0; j < size; j++) {
         let { x, y } = callback(i, j, array[i * size + j])
-        r[i * size + j] = array[x * size + y]
+        r[x * size + y] = array[i * size + j]
       }
     }
-    return array
+    return r
   }
 
   function match<T>(a1: T[], a2: T[]) {

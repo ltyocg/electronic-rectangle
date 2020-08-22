@@ -1,9 +1,6 @@
 #toolbar {
   text-align: center;
 }
-#toolbar label + label {
-  margin-left: 20px;
-}
 button {
   user-select: none;
 }
