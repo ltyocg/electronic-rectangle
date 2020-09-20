@@ -20,7 +20,7 @@ type PointCallback = (x: number, y: number) => Point
 
 function App() {
   const size = 3
-  const sizeSquare = size * size
+  const sizeSquare = size ** 2
   const operation: Record<string, Omit<History, 'id'>> = {
     Up: {
       name: '上移',
@@ -95,7 +95,7 @@ function App() {
     action: Action,
     disabled?: boolean
   }) => (
-    <button onClick={() => move(props.action)} disabled={props.disabled ?? done}>{props.keyName}<br/>{props.name}</button>
+    <button onClick={() => move(props.action)} disabled={props.disabled ?? done}>{props.keyName}<br />{props.name}</button>
   )
   const BlockTable = (props: {
     data: any[]
@@ -107,7 +107,7 @@ function App() {
       {Array.from({ length: size }).map((_, i) => (
         <tr key={i}>
           {Array.from({ length: size }).map((_, j) => (
-            <td key={j}><Block type={props.data[i * size + j]} size={props.size} colorBlindness={colorBlindness}/></td>
+            <td key={j}><Block type={props.data[i * size + j]} size={props.size} colorBlindness={colorBlindness} /></td>
           ))}
         </tr>
       ))}
@@ -123,7 +123,7 @@ function App() {
         <button onClick={() => changeDifficulty(1)} disabled={difficulty > 7}>+</button>
         <label style={{ marginLeft: '20px' }}>
           色盲模式：
-          <input checked={colorBlindness} onChange={event => setColorBlindness(event.target.checked)} type="checkbox"/>
+          <input checked={colorBlindness} onChange={event => setColorBlindness(event.target.checked)} type="checkbox" />
         </label>
       </div>
       <div className="row">
@@ -132,26 +132,26 @@ function App() {
           <table id="shortcut-help">
             <tbody>
             <tr>
-              <td><ShortcutButton keyName={'Q'} name={'左旋转'} action={'RotateLeft'}/></td>
-              <td><ShortcutButton keyName={'W'} name={'上移'} action={'Up'}/></td>
-              <td><ShortcutButton keyName={'E'} name={'右旋转'} action={'RotateRight'}/></td>
-              <td><ShortcutButton keyName={'R'} name={'重置'} action={'Reset'} disabled={!historyStep.length}/></td>
+              <td><ShortcutButton keyName={'Q'} name={'左旋转'} action={'RotateLeft'} /></td>
+              <td><ShortcutButton keyName={'W'} name={'上移'} action={'Up'} /></td>
+              <td><ShortcutButton keyName={'E'} name={'右旋转'} action={'RotateRight'} /></td>
+              <td><ShortcutButton keyName={'R'} name={'重置'} action={'Reset'} disabled={!historyStep.length} /></td>
             </tr>
             <tr>
-              <td><ShortcutButton keyName={'A'} name={'左移'} action={'Left'}/></td>
-              <td><ShortcutButton keyName={'S'} name={'下移'} action={'Down'}/></td>
-              <td><ShortcutButton keyName={'D'} name={'右移'} action={'Right'}/></td>
+              <td><ShortcutButton keyName={'A'} name={'左移'} action={'Left'} /></td>
+              <td><ShortcutButton keyName={'S'} name={'下移'} action={'Down'} /></td>
+              <td><ShortcutButton keyName={'D'} name={'右移'} action={'Right'} /></td>
             </tr>
             <tr>
-              <td><ShortcutButton keyName={'Z'} name={'撤销'} action={'Undo'} disabled={!historyStep.length || done}/></td>
+              <td><ShortcutButton keyName={'Z'} name={'撤销'} action={'Undo'} disabled={!historyStep.length || done} /></td>
             </tr>
             </tbody>
           </table>
           <p>目标位置：</p>
-          <BlockTable data={answer} style={{ borderStyle: 'double' }} size={60}/>
+          <BlockTable data={answer} style={{ borderStyle: 'double' }} size={60} />
         </div>
         <div className="column" style={{ width: '50%' }}>
-          <BlockTable data={situation} style={{ margin: '0 auto' }} size={150}/>
+          <BlockTable data={situation} style={{ margin: '0 auto' }} size={150} />
         </div>
         <div className="column" style={{ width: '25%' }}>
           <div>历史步骤（{historyStep.length}）：</div>

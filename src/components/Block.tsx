@@ -6,6 +6,7 @@ function Block(props: { type?: number, size: number, colorBlindness: boolean }) 
   return (
     <div style={{
       textAlign: 'center',
+      userSelect: 'none',
       width: sizeStr,
       height: sizeStr,
       backgroundColor: ['ghostwhite', 'hotpink', 'cornflowerblue', 'gold'][colorBlindness ? 0 : type],
