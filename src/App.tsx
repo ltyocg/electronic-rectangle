@@ -1,45 +1,47 @@
-import React, { CSSProperties, useEffect, useState } from 'react'
+import React, { CSSProperties, useState } from 'react'
 import './App.css'
 import Block from './components/Block'
 import Util from './Util'
+import ShortcutButton from './components/ShortcutButton'
 
 interface Point {
-  x: number,
+  x: number
   y: number
 }
 
 interface History {
-  id: Action,
-  name: string,
-  handler: PointCallback,
+  id: Action
+  name: string
+  handler: PointCallback
   reverse: Action
 }
 
 type Action = 'Up' | 'Down' | 'Left' | 'Right' | 'RotateLeft' | 'RotateRight' | 'Undo' | 'Reset'
 type PointCallback = (x: number, y: number) => Point
 
+const size = 3
+const sizeSquare = size ** 2
+
 function App() {
-  const size = 3
-  const sizeSquare = size ** 2
   const operation: Record<string, Omit<History, 'id'>> = {
     Up: {
       name: '上移',
-      handler: (x, y) => ({ x: Util.rotation(size, x, -1), y }),
+      handler: (x, y) => ({ x: Util.modAdd(size, x, -1), y }),
       reverse: 'Down'
     },
     Down: {
       name: '下移',
-      handler: (x, y) => ({ x: Util.rotation(size, x, 1), y }),
+      handler: (x, y) => ({ x: Util.modAdd(size, x, 1), y }),
       reverse: 'Up'
     },
     Left: {
       name: '左移',
-      handler: (x, y) => ({ x, y: Util.rotation(size, y, -1) }),
+      handler: (x, y) => ({ x, y: Util.modAdd(size, y, -1) }),
       reverse: 'Right'
     },
     Right: {
       name: '右移',
-      handler: (x, y) => ({ x, y: Util.rotation(size, y, 1) }),
+      handler: (x, y) => ({ x, y: Util.modAdd(size, y, 1) }),
       reverse: 'Left'
     },
     RotateLeft: {
@@ -60,57 +62,18 @@ function App() {
   const [done, setDone] = useState(false)
   const [situation, setSituation] = useState(seed)
   const [colorBlindness, setColorBlindness] = useState(false)
-  useEffect(() => {
-    document.onkeydown = ev => {
-      operationArray({
-        Reset: ['KeyR'],
-        Undo: ['KeyZ']
-      }, ev.code)
-        .forEach(o => {
-          let action = {
-            Reset: { handle: () => move('Reset') },
-            Undo: { handle: () => move('Undo') }
-          }[o.id]
-          action.handle()
-        })
-      operationArray({
-        Up: ['KeyW', 'ArrowUp'],
-        Down: ['KeyS', 'ArrowDown'],
-        Left: ['KeyA', 'ArrowLeft'],
-        Right: ['KeyD', 'ArrowRight'],
-        RotateLeft: ['KeyQ'],
-        RotateRight: ['KeyE']
-      }, ev.code).forEach(o => move(o.id))
-    }
-
-    function operationArray<T extends Record<string, string[]>>(opt: T, code: string) {
-      return Object.keys(opt)
-        .map<{ id: keyof T, shortcutKey: string[] }>(k => ({ id: k, shortcutKey: opt[k] }))
-        .filter(o => o.shortcutKey.some(key => key === code))
-    }
-  })
-  const ShortcutButton = (props: {
-    keyName: string,
-    name: string,
-    action: Action,
-    disabled?: boolean
-  }) => (
-    <button onClick={() => move(props.action)} disabled={props.disabled ?? done}>{props.keyName}<br />{props.name}</button>
-  )
-  const BlockTable = (props: {
-    data: any[]
-    style?: CSSProperties,
-    size: number
-  }) => (
+  const BlockTable = (props: { data: any[]; style?: CSSProperties; size: number }) => (
     <table style={props.style}>
       <tbody>
-      {Array.from({ length: size }).map((_, i) => (
-        <tr key={i}>
-          {Array.from({ length: size }).map((_, j) => (
-            <td key={j}><Block type={props.data[i * size + j]} size={props.size} colorBlindness={colorBlindness} /></td>
-          ))}
-        </tr>
-      ))}
+        {Array.from({ length: size }).map((_, i) => (
+          <tr key={i}>
+            {Array.from({ length: size }).map((_, j) => (
+              <td key={j}>
+                <Block type={props.data[i * size + j]} size={props.size} colorBlindness={colorBlindness} />
+              </td>
+            ))}
+          </tr>
+        ))}
       </tbody>
     </table>
   )
@@ -118,12 +81,20 @@ function App() {
     <>
       <div id="toolbar">
         难度：
-        <button onClick={() => changeDifficulty(-1)} disabled={difficulty < 1}>-</button>
+        <button onClick={() => changeDifficulty(-1)} disabled={difficulty < 1}>
+          -
+        </button>
         <span style={{ margin: '0 5px' }}>{difficulty}</span>
-        <button onClick={() => changeDifficulty(1)} disabled={difficulty > 7}>+</button>
+        <button onClick={() => changeDifficulty(1)} disabled={difficulty > 7}>
+          +
+        </button>
         <label style={{ marginLeft: '20px' }}>
           色盲模式：
-          <input checked={colorBlindness} onChange={event => setColorBlindness(event.target.checked)} type="checkbox" />
+          <input
+            checked={colorBlindness}
+            onChange={(event) => setColorBlindness(event.target.checked)}
+            type="checkbox"
+          />
         </label>
       </div>
       <div className="row">
@@ -131,20 +102,84 @@ function App() {
           <p>快捷键：</p>
           <table id="shortcut-help">
             <tbody>
-            <tr>
-              <td><ShortcutButton keyName={'Q'} name={'左旋转'} action={'RotateLeft'} /></td>
-              <td><ShortcutButton keyName={'W'} name={'上移'} action={'Up'} /></td>
-              <td><ShortcutButton keyName={'E'} name={'右旋转'} action={'RotateRight'} /></td>
-              <td><ShortcutButton keyName={'R'} name={'重置'} action={'Reset'} disabled={!historyStep.length} /></td>
-            </tr>
-            <tr>
-              <td><ShortcutButton keyName={'A'} name={'左移'} action={'Left'} /></td>
-              <td><ShortcutButton keyName={'S'} name={'下移'} action={'Down'} /></td>
-              <td><ShortcutButton keyName={'D'} name={'右移'} action={'Right'} /></td>
-            </tr>
-            <tr>
-              <td><ShortcutButton keyName={'Z'} name={'撤销'} action={'Undo'} disabled={!historyStep.length || done} /></td>
-            </tr>
+              <tr>
+                <td>
+                  <ShortcutButton
+                    keyName={'Q'}
+                    name={'左旋转'}
+                    handler={() => move('RotateLeft')}
+                    keyCodes={['KeyQ']}
+                    disabled={done}
+                  />
+                </td>
+                <td>
+                  <ShortcutButton
+                    keyName={'W'}
+                    name={'上移'}
+                    handler={() => move('Up')}
+                    keyCodes={['KeyW', 'ArrowUp']}
+                    disabled={done}
+                  />
+                </td>
+                <td>
+                  <ShortcutButton
+                    keyName={'E'}
+                    name={'右旋转'}
+                    handler={() => move('RotateRight')}
+                    keyCodes={['KeyE']}
+                    disabled={done}
+                  />
+                </td>
+                <td>
+                  <ShortcutButton
+                    keyName={'R'}
+                    name={'重置'}
+                    handler={() => move('Reset')}
+                    keyCodes={['KeyR']}
+                    disabled={!historyStep.length}
+                  />
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <ShortcutButton
+                    keyName={'A'}
+                    name={'左移'}
+                    handler={() => move('Left')}
+                    keyCodes={['KeyA', 'ArrowLeft']}
+                    disabled={done}
+                  />
+                </td>
+                <td>
+                  <ShortcutButton
+                    keyName={'S'}
+                    name={'下移'}
+                    handler={() => move('Down')}
+                    keyCodes={['KeyS', 'ArrowDown']}
+                    disabled={done}
+                  />
+                </td>
+                <td>
+                  <ShortcutButton
+                    keyName={'D'}
+                    name={'右移'}
+                    handler={() => move('Right')}
+                    keyCodes={['KeyD', 'ArrowRight']}
+                    disabled={done}
+                  />
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <ShortcutButton
+                    keyName={'Z'}
+                    name={'撤销'}
+                    handler={() => move('Undo')}
+                    keyCodes={['KeyZ']}
+                    disabled={!historyStep.length || done}
+                  />
+                </td>
+              </tr>
             </tbody>
           </table>
           <p>目标位置：</p>
@@ -156,7 +191,9 @@ function App() {
         <div className="column" style={{ width: '25%' }}>
           <div>历史步骤（{historyStep.length}）：</div>
           <ol style={{ maxHeight: '450px', overflowY: 'auto' }}>
-            {historyStep.map((h, i) => (<li key={i}>{h.name}</li>))}
+            {historyStep.map((h, i) => (
+              <li key={i}>{h.name}</li>
+            ))}
           </ol>
         </div>
       </div>
@@ -165,11 +202,15 @@ function App() {
           <span style={{ fontSize: 'xx-large' }}>过关！</span>
           <div className="row">
             <div className="column" style={{ width: '50%' }}>
-              <a onClick={() => newGame(difficulty)} href="#">再来一个</a>
+              <a onClick={() => newGame(difficulty)} href="#">
+                再来一个
+              </a>
             </div>
             <div className="column" style={{ width: '50%' }}>
               {difficulty < 8 ? (
-                <a onClick={() => changeDifficulty(1)} href="#">下一关</a>
+                <a onClick={() => changeDifficulty(1)} href="#">
+                  下一关
+                </a>
               ) : null}
             </div>
           </div>
@@ -194,7 +235,9 @@ function App() {
       { total: 3, types: 3 },
       { total: 4, types: 3 }
     ][difficulty]
-    let typeArray = Array.from({ length: types + 1 }).map((_, i) => i).slice(1)
+    let typeArray = Array.from({ length: types + 1 })
+      .map((_, i) => i)
+      .slice(1)
     for (let i = total - types; i > 0; i--) typeArray.push(randomInt(1, types))
     for (let i = typeArray.length; i < sizeSquare; i++) typeArray.push(0)
     shuffle(typeArray)
@@ -229,7 +272,7 @@ function App() {
       let ramPoint = coordinate(randomInt(0, sizeSquare - 1))
       for (let i = 0; i < target.length; i++) {
         let point = coordinate(i)
-        answer[i] = target[Util.rotation(size, point.x, ramPoint.x) * size + Util.rotation(size, point.y, ramPoint.y)]
+        answer[i] = target[Util.modAdd(size, point.x, ramPoint.x) * size + Util.modAdd(size, point.y, ramPoint.y)]
       }
       //确保生成的答案与初始状态不相同
     } while (match(answer, seed))
@@ -262,16 +305,18 @@ function App() {
         if (done) return
         let s = traverse(size, situation, operation[action].handler)
         setSituation(s)
-        setHistoryStep(h => h.concat({
-          id: action,
-          ...operation[action]
-        }))
+        setHistoryStep((h) =>
+          h.concat({
+            id: action,
+            ...operation[action]
+          })
+        )
         if (match(s, answer)) setDone(true)
         break
       case 'Undo':
         if (done || !historyStep.length) return
-        setSituation(s => traverse(size, s, operation[historyStep[historyStep.length - 1].reverse].handler))
-        setHistoryStep(h => h.slice(0, h.length - 1))
+        setSituation((s) => traverse(size, s, operation[historyStep[historyStep.length - 1].reverse].handler))
+        setHistoryStep((h) => h.slice(0, h.length - 1))
         break
       case 'Reset':
         setSituation(seed)
@@ -292,17 +337,15 @@ function App() {
   }
 
   function match<T>(a1: T[], a2: T[]) {
-    for (let i = 0; i < sizeSquare; i++) {
-      if (a1[i] !== a2[i]) return false
-    }
+    for (let i = 0; i < sizeSquare; i++) if (a1[i] !== a2[i]) return false
     return true
   }
 
   function shuffle(array: any[]) {
-    let m = array.length, i
+    let m = array.length
     while (m) {
-      i = Math.floor(Math.random() * m--);
-      [array[m], array[i]] = [array[i], array[m]]
+      const i = Math.floor(Math.random() * m--)
+      ;[array[m], array[i]] = [array[i], array[m]]
     }
     return array
   }
